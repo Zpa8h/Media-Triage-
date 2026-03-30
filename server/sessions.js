@@ -1,9 +1,26 @@
 import { readFile, writeFile, rename, readdir } from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const SESSIONS_DIR = 'triage-sessions';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Absolute path — immune to process.cwd() changes and path traversal
+const SESSIONS_DIR = path.resolve(__dirname, '..', 'triage-sessions');
+
+// Only UUIDs (v4) are valid session IDs — this is what the server generates.
+// Rejecting anything else closes the path-traversal vector before any
+// filesystem call is made.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function assertValidId(id) {
+  if (typeof id !== 'string' || !UUID_RE.test(id)) {
+    const err = new Error('Invalid session ID');
+    err.status = 400;
+    throw err;
+  }
+}
 
 function sessionFilePath(id) {
+  assertValidId(id);
   return path.join(SESSIONS_DIR, `${id}.json`);
 }
 
