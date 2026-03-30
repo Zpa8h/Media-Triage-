@@ -1,0 +1,4 @@
+node_modules/
+dist/
+triage-sessions/*.json
+triage-sessions/*.sh
