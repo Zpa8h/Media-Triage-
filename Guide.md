@@ -1,0 +1,201 @@
+# Media Triage Tool — Claude Code Spec
+
+## Overview
+
+Build a **local web app** (React + Node.js) that helps the user sort and organize media libraries (ebooks, audiobooks, movies, etc.) without making any changes automatically. The app guides the user through four sequential phases: scan, configure, triage, and export.
+
+The app must work **entirely locally**. No cloud dependencies. The user runs it from their terminal.
+
+-----
+
+## Tech Stack
+
+- **Frontend**: React (Vite), with a distinctive, utilitarian aesthetic — think dark terminal-inspired UI, monospace accents, clean card layout. Avoid generic purple-gradient AI aesthetics.
+- **Backend**: Small Node.js/Express server that handles filesystem scanning and serves the React app
+- **Persistence**: JSON file on disk (the session file) — no database needed
+- **Fonts**: Something with character — a monospace or editorial pairing, not Inter/Roboto
+
+-----
+
+## The Four Phases
+
+### Phase 1 — Scan
+
+The user runs the app (`npm start` or similar), which opens in the browser. On the first screen they see a **file picker / path input** to point at a directory to scan.
+
+The Node backend walks the directory tree and:
+
+1. Finds all media files (configurable extensions: `.epub`, `.cbz`, `.pdf`, `.mp3`, `.m4b`, `.mkv`, `.mp4`, etc.)
+1. For each file, determines the **split point** — the highest ancestor folder that has more than one child. Everything from that split point downward is the “unique” portion of the path.
+1. Groups files by their split point into **triage cards**
+
+**Split point algorithm:**
+
+Walk up the folder tree from each file. The split point is the first ancestor directory that contains more than one child (file or folder). The grouping unit is the child of that ancestor that contains the file.
+
+Examples:
+
+```
+Library/
+  AuthorA/
+    book1.epub        → split at Library/, bold: AuthorA/book1.epub
+    book2.epub        → split at Library/, bold: AuthorA/book2.epub
+  AuthorB/
+    SeriesX/
+      Book1/
+        book1.epub    → split at SeriesX/, bold: Book1/book1.epub
+      Book2/
+        book2.epub    → split at SeriesX/, bold: Book2/book2.epub
+  AuthorC/
+    OnlyBook/
+      onlybook.epub   → split at Library/, bold: AuthorC/OnlyBook/onlybook.epub
+```
+
+The scan output is a **JSON session file** saved to disk (e.g. `triage-sessions/[timestamp]-[folder-name].json`).
+
+The session file schema:
+
+```json
+{
+  "id": "uuid",
+  "createdAt": "ISO timestamp",
+  "sourceDir": "/absolute/path/to/library",
+  "label": "My Ebook Library",
+  "options": [],
+  "cards": [
+    {
+      "id": "uuid",
+      "filename": "book1.epub",
+      "fullPath": "/Library/AuthorA/book1.epub",
+      "splitPoint": "/Library/",
+      "boldSegment": "AuthorA/book1.epub",
+      "format": "epub",
+      "sizeBytes": 1234567,
+      "decision": null,
+      "notes": "",
+      "decidedAt": null
+    }
+  ]
+}
+```
+
+The app can also **load an existing session file** via file picker — so the user can resume a previous session or load a scan from a different machine.
+
+-----
+
+### Phase 2 — Configure
+
+Before triaging, the user configures the session:
+
+- **Session label** (e.g. “Ebook Library Triage — March 2026”)
+- **Options** — the user defines 2–4 buckets. Each bucket has:
+  - A short label (e.g. “Keep”, “Self-Help”, “Archive”, “Delete”)
+  - A destination path (absolute path on their machine) — or “leave in place” for a no-move option
+  - A color/accent for the button so cards are visually distinct
+
+Options are saved into the session JSON.
+
+-----
+
+### Phase 3 — Flashcard Triage
+
+The core of the app. Cards are shown one at a time.
+
+**Each card displays:**
+
+- Line 1: `filename.epub` — large, prominent
+- Line 2: full path with the **bold segment highlighted** (visually distinct, not just bold — maybe a different color or background highlight on that portion of the path)
+- File format badge (EPUB / MP3 / MKV etc.)
+- File size
+- Notes field (free text, optional)
+- Option buttons (one per configured destination) + a **Skip** button
+
+**Behavior:**
+
+- Decisions are written to the session JSON immediately on click — no save button needed
+- A progress bar shows how many cards have been decided vs. total (skipped cards count as undecided)
+- The user can navigate **back** to previously decided cards and change their decision
+- The user can **filter** the deck: All / Undecided / Skipped / Decided
+- Session is fully resumable — closing the browser and reopening loads the same state from the JSON file
+
+-----
+
+### Phase 4 — Export
+
+A summary screen showing:
+
+- A count breakdown by option (e.g. “Keep: 12, Self-Help: 34, Archive: 8, Skipped: 4”)
+- A scrollable list of all decisions grouped by option
+- An option to **process partially** — export only the cards that have been decided, leaving skipped cards for later
+- **Export button** — generates a shell script of `mv` commands:
+
+```bash
+#!/bin/bash
+# Media Triage Export — My Ebook Library — 2026-03-30
+# Generated by Media Triage Tool
+# Review before running. This will move files.
+
+# --- Self-Help (34 files) ---
+mv "/Library/AuthorA/book1.epub" "/Library/Self-Help/book1.epub"
+mv "/Library/AuthorB/SeriesX/Book1/book1.epub" "/Library/Self-Help/book1.epub"
+# ...
+
+# --- Archive (8 files) ---
+mv "/Library/AuthorC/OnlyBook/onlybook.epub" "/Archive/onlybook.epub"
+```
+
+The script is saved to disk AND shown in a code block in the UI for review. It does **not** run automatically.
+
+-----
+
+## UI/UX Notes
+
+- **Dark theme**, utilitarian. Think: a tool someone actually uses in a terminal context. Clean lines, clear hierarchy.
+- The flashcard itself should feel like a **physical card** — maybe a slight shadow, centered on screen, keyboard navigable (arrow keys to navigate, number keys 1–4 to pick options, S to skip, N to focus notes)
+- Progress should be visible at all times — a persistent status bar or sidebar
+- The four phases should be clearly delineated — either a stepper nav or distinct screen transitions
+- Distinctive typography — consider a monospace font for paths and filenames, a more editorial font for headings
+
+-----
+
+## File Structure Suggestion
+
+```
+media-triage/
+  server/
+    index.js          # Express server: scan endpoint, file serving
+    scanner.js        # Directory walking + split point logic
+  client/
+    src/
+      App.jsx
+      phases/
+        Scan.jsx
+        Configure.jsx
+        Triage.jsx
+        Export.jsx
+      components/
+        Card.jsx
+        PathDisplay.jsx   # Renders path with bold segment highlighted
+        ProgressBar.jsx
+  triage-sessions/        # Where session JSONs are stored
+  package.json
+```
+
+-----
+
+## Key Constraints
+
+- **Nothing moves automatically** — the app only generates shell scripts
+- **All state lives in the session JSON** — the React app is stateless between page loads
+- **Cross-platform paths** — use `path.posix` / `path` carefully so it works on Linux/Mac (the server runs on Ubuntu)
+- Sessions should be **human-readable JSON** so the user can inspect or edit them manually if needed
+- The scan script should be **fast** — use async directory walking, not synchronous
+
+-----
+
+## Out of Scope (for now)
+
+- Metadata fetching from external APIs (no ISBN lookup, no cover art)
+- Any actual file moving within the app itself
+- Authentication
+- Multi-user support
