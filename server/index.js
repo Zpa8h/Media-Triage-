@@ -1,5 +1,6 @@
 import express from 'express';
 import { mkdirSync } from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
@@ -125,10 +126,14 @@ if (process.env.NODE_ENV === 'production') {
 // Start
 // -----------------------------------------------------------------------
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   const env = process.env.NODE_ENV === 'production' ? 'production' : 'dev';
-  console.log(`[media-triage] server running on http://localhost:${PORT} (${env})`);
+  // Find the LAN IP so the user knows where to point their browser
+  const lanIP = Object.values(os.networkInterfaces())
+    .flat()
+    .find(i => i.family === 'IPv4' && !i.internal)?.address ?? 'localhost';
+  console.log(`[media-triage] server → http://${lanIP}:${PORT} (${env})`);
   if (env !== 'production') {
-    console.log(`[media-triage] open the UI at http://localhost:5173`);
+    console.log(`[media-triage] UI      → http://${lanIP}:5173`);
   }
 });
