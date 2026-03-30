@@ -1,7 +1,9 @@
 import { writeFile } from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const SESSIONS_DIR = 'triage-sessions';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SESSIONS_DIR = path.resolve(__dirname, '..', 'triage-sessions');
 
 /**
  * Generate a bash script of mv commands for decided cards.
