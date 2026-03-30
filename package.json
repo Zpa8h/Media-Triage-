@@ -1,0 +1,24 @@
+{
+  "name": "media-triage",
+  "version": "1.0.0",
+  "description": "Local media triage tool — sort your library without moving anything",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c cyan,yellow \"node server/index.js\" \"vite client\"",
+    "build": "vite build client",
+    "start": "NODE_ENV=production node server/index.js",
+    "test": "node --test server/scanner.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fast-glob": "^3.3.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.2.11"
+  }
+}
