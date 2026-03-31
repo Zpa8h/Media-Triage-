@@ -113,6 +113,15 @@ app.post('/api/sessions/:id/export', async (req, res) => {
 });
 
 // -----------------------------------------------------------------------
+// Shutdown endpoint — lets the UI stop the server gracefully.
+// --kill-others in the dev script means killing Express also kills Vite.
+// -----------------------------------------------------------------------
+app.post('/api/shutdown', (_req, res) => {
+  res.json({ message: 'Shutting down' });
+  setTimeout(() => process.exit(0), 300);
+});
+
+// -----------------------------------------------------------------------
 // Static file serving (production build)
 // -----------------------------------------------------------------------
 if (process.env.NODE_ENV === 'production') {

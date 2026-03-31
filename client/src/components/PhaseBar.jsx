@@ -1,6 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const PHASE_LABELS = ['Scan', 'Configure', 'Triage', 'Export'];
+
+function StopButton() {
+  const [state, setState] = useState('idle'); // idle | stopping | stopped
+
+  async function handleStop() {
+    if (state !== 'idle') return;
+    setState('stopping');
+    try {
+      await fetch('/api/shutdown', { method: 'POST' });
+    } catch {
+      // Expected — the server closes the connection as it exits
+    }
+    setState('stopped');
+  }
+
+  const label = state === 'idle' ? '⏻  stop server'
+    : state === 'stopping' ? 'stopping…'
+    : 'stopped';
+
+  return (
+    <button
+      onClick={handleStop}
+      disabled={state !== 'idle'}
+      title="Stop the dev server"
+      style={{
+        marginLeft: 'auto',
+        background: 'transparent',
+        border: '1px solid',
+        borderColor: state === 'idle' ? 'var(--border)' : 'transparent',
+        borderRadius: 'var(--radius)',
+        padding: '4px 10px',
+        fontSize: 11,
+        fontFamily: 'var(--font-mono)',
+        color: state === 'stopped' ? 'var(--text-muted)' : 'var(--text-dim)',
+        cursor: state === 'idle' ? 'pointer' : 'default',
+        letterSpacing: '0.05em',
+        transition: 'color 0.15s, border-color 0.15s',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={e => { if (state === 'idle') e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+    >
+      {label}
+    </button>
+  );
+}
 
 export default function PhaseBar({ phases, current, sessionId, onNavigate }) {
   return (
@@ -80,6 +126,8 @@ export default function PhaseBar({ phases, current, sessionId, onNavigate }) {
           );
         })}
       </div>
+
+      <StopButton />
     </nav>
   );
 }

@@ -4,9 +4,9 @@
   "description": "Local media triage tool — sort your library without moving anything",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n server,client -c cyan,yellow \"node server/index.js\" \"vite client\"",
-    "dev:bg": "nohup npm run dev > triage.log 2>&1 & echo $! > triage.pid && echo 'Started in background. Logs: triage.log'",
-    "stop": "kill $(cat triage.pid 2>/dev/null) 2>/dev/null && rm -f triage.pid && echo 'Stopped' || echo 'Not running'",
+    "dev": "concurrently --kill-others -n server,client -c cyan,yellow \"node server/index.js\" \"vite client\"",
+    "dev:bg": "npm run dev > triage.log 2>&1 & echo $! > triage.pid && echo 'Started. Logs: triage.log  |  Stop: npm run stop'",
+    "stop": "fuser -k 3001/tcp 5173/tcp 2>/dev/null; rm -f triage.pid; echo Stopped",
     "build": "vite build client",
     "start": "NODE_ENV=production node server/index.js",
     "test": "node --test server/scanner.test.js"
